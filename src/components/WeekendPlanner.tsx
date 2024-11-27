@@ -13,6 +13,8 @@ import { TripCard } from './TripCard';
 import { AddButton } from './AddButton';
 import { EventForm } from './EventForm';
 import { LocationPicker } from './LocationPicker';
+import { format } from 'date-fns';
+
 
 interface WeekendPlannerProps {
   eventId: string;
@@ -116,7 +118,7 @@ export function WeekendPlanner({ eventId }: WeekendPlannerProps) {
       title,
       time: time || undefined,
       notes: [],
-      dayId,
+      dayId: dayId,
       location: undefined,
     };
 
@@ -421,16 +423,20 @@ export function WeekendPlanner({ eventId }: WeekendPlannerProps) {
                     key={day.id}
                     className="bg-[#FFFAF0]/90 backdrop-blur-sm p-6 rounded-xl shadow-lg"
                   >
+                    {/* Day Header */}
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-[#4A4A4A]">
-                        {day.title}
+                        {day.title} {/* Day of the Week */}
                       </h2>
-                      <AddButton
-                        onClick={() => addCard(day.id)}
-                        label="+"
-                        compact
-                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-[#4A4A4A]">
+                          {format(day.date, 'dd-MM-yyyy')} {/* Date in dd-MM-yyyy format */}
+                        </span>
+                        <AddButton onClick={() => addCard(day.id)} label="+" compact />
+                      </div>
                     </div>
+
+                    {/* Droppable Area for Cards */}
                     <Droppable droppableId={day.id}>
                       {(provided) => (
                         <div
@@ -476,6 +482,7 @@ export function WeekendPlanner({ eventId }: WeekendPlannerProps) {
                   </div>
                 ))}
               </div>
+
             </DragDropContext>
           </div>
         </div>

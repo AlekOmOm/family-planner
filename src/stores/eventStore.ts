@@ -15,6 +15,7 @@ interface EventState {
   updateEvent: (id: string, event: Partial<Event>) => Promise<Event>;
   getEvent: (id: string) => Promise<Event | null>;
   getUserEvents: () => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
   shareEvent: (id: string) => Promise<void>;
   initialize: () => Promise<void>;
   getSharedParticipants: () => Promise<Person[]>;
@@ -68,6 +69,8 @@ export const useEventStore = create<EventState>((set, get) => ({
     }
   },
 
+
+
   createEvent: async (eventData: Partial<Event>) => {
     set({ loading: true, error: null });
     try {
@@ -93,7 +96,8 @@ export const useEventStore = create<EventState>((set, get) => ({
           }
         ],
         days: generateDaysFromDateRange(startDate, endDate),
-        floatingCards: []
+        floatingCards: [],
+        ownerId: user.id
       };
 
       const createdEvent = await eventAPI.create(newEvent);
@@ -230,6 +234,41 @@ export const useEventStore = create<EventState>((set, get) => ({
       set({ loading: false, error: (error as Error).message });
     }
   },
+
+  deleteEvent: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) throw new Error('User not authenticated');
+  
+      const event = get().events[id];
+      if (!event) throw new Error('Event not found');
+  
+      if (event.ownerId !== user.id) throw new Error('You do not have permission to delete this event');
+  
+      // Delete the event from the backend
+      await eventAPI.delete(id);
+  
+      // Remove the event from the user's events
+      await userEventAPI.removeUserEvent(user.id, id);
+  
+      // Update local state
+      set((state) => {
+        const newEvents = { ...state.events };
+        delete newEvents[id];
+  
+        return {
+          events: newEvents,
+          userEvents: state.userEvents.filter((eventId) => eventId !== id),
+          loading: false,
+        };
+      });
+    } catch (error) {
+      set({ loading: false, error: (error as Error).message });
+      throw error;
+    }
+  },
+  
 
   shareEvent: async (id: string) => {
     set({ loading: true, error: null });

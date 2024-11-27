@@ -37,6 +37,7 @@ export interface Event {
   people: Person[];
   days: Day[];
   floatingCards: Card[];
+  ownerId: string;
 }
 
 export interface User {

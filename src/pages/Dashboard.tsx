@@ -9,7 +9,14 @@ import { format } from 'date-fns';
 export function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { events, userEvents, getUserEvents, createEvent, importEvent } = useEventStore();
+  const {
+    events,
+    userEvents,
+    getUserEvents,
+    createEvent,
+    importEvent,
+    deleteEvent,
+  } = useEventStore();
   const [importInput, setImportInput] = useState('');
   const [error, setError] = useState('');
 
@@ -25,7 +32,7 @@ export function Dashboard() {
         title: '',
         location: '',
         startDate: new Date(),
-        endDate: new Date()
+        endDate: new Date(),
       });
       navigate(`/event/${event.id}`);
     } catch (err) {
@@ -35,17 +42,17 @@ export function Dashboard() {
 
   const handleImportEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       setError('Please sign in to import events');
       return;
     }
-    
+
     let eventId = importInput.trim();
     if (eventId.includes('/')) {
       eventId = eventId.split('/').pop() || '';
     }
-    
+
     if (!eventId) {
       setError('Please enter a valid event ID or URL');
       return;
@@ -56,6 +63,18 @@ export function Dashboard() {
       navigate(`/event/${eventId}`);
     } catch (error) {
       setError((error as Error).message);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this event?');
+    if (!confirmDelete) return;
+
+    try {
+      await deleteEvent(eventId);
+      await getUserEvents();
+    } catch (err) {
+      setError('Failed to delete event');
     }
   };
 
@@ -71,33 +90,53 @@ export function Dashboard() {
           {/* Left side - Event List */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-2xl font-semibold text-[#4A4A4A]">Your Events</h2>
-            
+
             {user ? (
               userEvents.length > 0 ? (
                 <div className="grid gap-4">
-                  {userEvents.map(eventId => {
+                  {userEvents.map((eventId) => {
                     const event = events[eventId];
                     if (!event) return null;
-                    
+
+                    // Check if the user is the owner of the event
+                    const isOwner = user?.id === event.ownerId;
+
                     return (
-                      <button
+                      <div
                         key={event.id}
-                        onClick={() => navigate(`/event/${event.id}`)}
-                        className="block w-full text-left bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                        className="relative w-full bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                       >
-                        <h3 className="text-lg font-semibold text-[#4A4A4A] mb-2">
-                          {event.title || 'Untitled Event'}
-                        </h3>
-                        <div className="text-sm text-[#6B6B6B] space-y-1">
-                          {event.location && (
-                            <p>📍 {event.location}</p>
-                          )}
-                          <p>
-                            📅 {format(new Date(event.startDate), 'PPP')} - {format(new Date(event.endDate), 'PPP')}
-                          </p>
-                          <p>👥 {event.people.length} participants</p>
-                        </div>
-                      </button>
+                        {/* Delete Button */}
+                        {isOwner && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent the parent button's onClick
+                              handleDeleteEvent(event.id);
+                            }}
+                            className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
+                          >
+                            <span className="text-xl font-bold">-</span>
+                          </button>
+                        )}
+
+                        {/* Event Content */}
+                        <button
+                          onClick={() => navigate(`/event/${event.id}`)}
+                          className="w-full text-left"
+                        >
+                          <h3 className="text-lg font-semibold text-[#4A4A4A] mb-2">
+                            {event.title || 'Untitled Event'}
+                          </h3>
+                          <div className="text-sm text-[#6B6B6B] space-y-1">
+                            {event.location && <p>📍 {event.location}</p>}
+                            <p>
+                              📅 {format(new Date(event.startDate), 'PPP')} -{' '}
+                              {format(new Date(event.endDate), 'PPP')}
+                            </p>
+                            <p>👥 {event.people.length} participants</p>
+                          </div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -113,7 +152,9 @@ export function Dashboard() {
           <div className="space-y-6">
             {/* Create Event */}
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold text-[#4A4A4A] mb-4">Create New Event</h2>
+              <h2 className="text-xl font-semibold text-[#4A4A4A] mb-4">
+                Create New Event
+              </h2>
               <p className="text-[#6B6B6B] mb-6">
                 Start planning a new weekend event with your family and friends.
               </p>
@@ -128,7 +169,9 @@ export function Dashboard() {
 
             {/* Import Event */}
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold text-[#4A4A4A] mb-4">Import Event</h2>
+              <h2 className="text-xl font-semibold text-[#4A4A4A] mb-4">
+                Import Event
+              </h2>
               <form onSubmit={handleImportEvent} className="space-y-4">
                 <input
                   type="text"
@@ -148,9 +191,7 @@ export function Dashboard() {
                   Join Event
                 </button>
               </form>
-              {error && (
-                <p className="mt-2 text-sm text-red-600">{error}</p>
-              )}
+              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
           </div>
         </div>
